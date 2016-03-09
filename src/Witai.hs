@@ -37,7 +37,7 @@ witMessageWithOptions f msg = do r <- liftIO $ getWith opts "https://api.wit.ai/
 -- TODO : not a maybe, but a proper Either
 toDayInterval :: Outcome -> Maybe (Day, Day)
 toDayInterval o =
-  do dt <- oEntities o ^? key "datetime" . nth 0 -- TODO what about when there's more than one?
+  do dt <- oEntities o ^? key "datetime" . nth 0 -- TODO what about when there's more than one? (ex: January and February)
      case dt ^? key "type" . _String of
        Just "interval" -> (,) <$> dt ^? key "from" . key "value" . _JSON . to utctDay
                               <*> dt ^? key "to" . key "value" . _JSON . to utctDay

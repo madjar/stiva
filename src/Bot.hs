@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, TemplateHaskell #-}
 module Bot where
 
 import ClassyPrelude
@@ -11,6 +11,7 @@ import Data.Acid (AcidState)
 import Data.Acid.Advanced ( query', update' )
 import Control.Concurrent (forkIO)
 import Control.Monad.Reader (asks)
+import Control.Monad.Logger
 
 import Store
 import Witai
@@ -37,19 +38,24 @@ runSlackBot acid = do
 
 
 epopBot :: AcidState BotState -> SlackBot Convs
---echoBot m = print m
 epopBot acid (Message cid (UserComment user) msg _ _ _)
-  | isDirect cid && ( (user ^. getId) `elem` ["U060EJLF3", "U062HDBJ9"] ) =  --Hardcoded for me and ludo
-  do let tCid = cid ^. getId
-     -- TODO add logging before allowing others to use it
-     mchannels <- uses userState (lookup tCid)
-     fromThem <- case mchannels of
-       Just cs -> return (fromThem cs)
-       Nothing -> do channels <- mkChannels cid
-                     userState %= insertMap tCid channels
-                     void $ liftIO $ forkIO $ runReaderT (conversation acid tCid) channels
-                     return (fromThem channels)
-     liftIO $ writeChan fromThem msg
+  | isDirect cid =
+  do isSelf <- uses (session . slackSelf . selfUserId)
+                    (== user)
+     unless isSelf $ runStderrLoggingT $ do
+       $(logDebug) ("User " ++ (user ^. getId) ++ " says " ++ msg)
+
+       let tCid = cid ^. getId
+       -- TODO add logging before allowing others to use it
+       mchannels <- uses userState (lookup tCid)
+       fromThem <- case mchannels of
+         Just cs -> return (fromThem cs)
+         Nothing -> do $(logInfo) ("First contact with " ++ (user ^. getId) ++ " this session. Creating conversation thread.")
+                       channels <- lift $ mkChannels cid
+                       userState %= insertMap tCid channels
+                       void $ liftIO $ forkIO $ runReaderT (conversation acid tCid) channels
+                       return (fromThem channels)
+       liftIO $ writeChan fromThem msg
 epopBot _ _ = return ()
 
 mkChannels :: ChannelId -> Slack s ConvChannels
