@@ -91,6 +91,10 @@ handleIntent login pass (SetWithTask from to task) =
                        then say "Okay, doing it now" >> setTask login pass from to t
                        else say "Okay, not changing anything"
        Nothing -> say "Sorry, could not find it." >> askAndSetTask login pass from to tasks
+handleIntent _ _ Greetings = say "Hello to you!"
+handleIntent _ _ Compliment = say "Thanks, I try to do my best!"
+handleIntent _ _ Thanks = say "It's a pleasure to help"
+handleIntent _ _ Help = say "I'm here to help you with epop. You can ask me `What are my tasks this week?` or `Let's time track last week!` for example."
 
 askAndSetTask :: MonadConv m => Text -> Text -> Day -> Day -> [Task] -> m ()
 askAndSetTask login pass from to tasks =

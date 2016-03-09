@@ -21,8 +21,6 @@ data Outcome = Outcome { o_text :: Text
 $(deriveJSON defaultOptions{fieldLabelModifier = drop 1 . toLower} ''Outcome)
 
 
-
-
 witMessage :: MonadIO m => Text -> m [Outcome]
 witMessage = witMessageWithOptions id
 
@@ -55,7 +53,7 @@ toDayInterval o =
 -- TODO check grain
 
 -- TODO use context to give a list of projects to wit.ai
--- TODO use threads
+-- TODO use wit.ai threads
 
 traceJ :: (Monad m, ToJSON a) => a -> m ()
 traceJ = traceM . unpack . decodeUtf8 . encodePretty
@@ -66,9 +64,12 @@ data Intent = Get Day Day
             | SetWithTask Day Day Text
             | Yes
             | No
+            | Greetings
+            | Compliment
+            | Thanks
+            | Help
             deriving (Show)
 
--- TODO detect greetings, insults, and thanks
 
 -- TODO : when instance is incomplete, don't fail, but ask for the rest
 interpretIntent :: [Outcome] -> Maybe Intent
@@ -78,6 +79,10 @@ interpretIntent outcomes = toIntent =<< headMay outcomes
           "set_task" -> toSetTask out
           "yes" -> Just Yes
           "no" -> Just No
+          "greetings" -> Just Greetings
+          "compliment" -> Just Compliment
+          "thanks" -> Just Thanks
+          "help" -> Just Help
           e -> traceShow ("Unknown intent : " ++ e) Nothing
 
 
