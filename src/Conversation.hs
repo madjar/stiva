@@ -4,10 +4,11 @@ import ClassyPrelude
 import Data.Time
 import Control.Error hiding (headMay)
 import Control.Concurrent
-import Control.Lens hiding (index)
+import Control.Lens hiding (index, (.=))
 import Data.Aeson.Lens
 import Data.List.Extra (groupOn)
 import System.IO (hFlush)
+import Data.Aeson
 
 import System.Process (callProcess)
 import Data.Acid (AcidState)
@@ -27,8 +28,11 @@ instance MonadConv IO where
   say t = putStr "Stiva: " >> putStrLn t
 
 confirm :: MonadConv m => m Bool
-confirm = fmap (== "yes") listen  -- TODO use wit.ai for that one
-
+confirm = do outcomes <- witContextMessage (object ["state" .= ("asked_confirmation" :: Text)]) =<< listen
+             case interpretIntent outcomes of
+               Just Yes -> return True
+               Just No -> return False
+               _ -> say "Not sure I understood, I'll assume you said no" >> return False
 
 conversation :: MonadConv m => AcidState BotState -> Text -> m ()
 conversation acid cid =
@@ -50,7 +54,7 @@ conversation acid cid =
 
 convLoop :: MonadConv m => Text -> Text -> m ()
 convLoop login pass =
-  do intent <- interpretIntent =<< listen
+  do intent <- interpretIntent <$> (witMessage =<< listen)
      case intent of
        Just i -> handleIntent login pass i
        Nothing -> say "Sorry, I didn't understand"
@@ -84,7 +88,7 @@ handleIntent login pass (SetWithTask from to task) =
        Just t -> do say $ "Found " ++ tName t ++ ". Do you want me to set it to that task?"
                     doIt <- confirm
                     if doIt
-                       then setTask login pass from to t
+                       then say "Okay, doing it now" >> setTask login pass from to t
                        else say "Okay, not changing anything"
        Nothing -> say "Sorry, could not find it." >> askAndSetTask login pass from to tasks
 

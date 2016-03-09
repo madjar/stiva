@@ -5,7 +5,7 @@ import ClassyPrelude
 import Network.Wreq
 import Control.Lens
 import Data.Aeson
-import Data.Aeson.TH
+import Data.Aeson.TH hiding (Options)
 import Data.Aeson.Lens
 import Data.Aeson.Encode.Pretty
 import Data.Time
@@ -21,12 +21,20 @@ data Outcome = Outcome { o_text :: Text
 $(deriveJSON defaultOptions{fieldLabelModifier = drop 1 . toLower} ''Outcome)
 
 
-witMessage :: Text -> IO [Outcome]
-witMessage msg = do r <- getWith opts "https://api.wit.ai/message"
-                    --putStrLn (r ^. responseBody . to decodeUtf8 . to toStrict)
-                    return $ r ^. responseBody . key "outcomes" . _JSON
+
+
+witMessage :: MonadIO m => Text -> m [Outcome]
+witMessage = witMessageWithOptions id
+
+witContextMessage :: MonadIO m => Value -> Text -> m [Outcome]
+witContextMessage context = witMessageWithOptions (param "context" .~ [decodeUtf8 . toStrict . encode $ context])
+
+witMessageWithOptions :: MonadIO m => (Options -> Options) -> Text -> m [Outcome]
+witMessageWithOptions f msg = do r <- liftIO $ getWith opts "https://api.wit.ai/message"
+                                 return $ r ^. responseBody . key "outcomes" . _JSON
   where opts = defaults & param "q" .~ [msg]
                         & header "Authorization" .~ ["Bearer " ++ witToken]
+                        & f
 
 -- TODO : not a maybe, but a proper Either
 toDayInterval :: Outcome -> Maybe (Day, Day)
@@ -56,19 +64,22 @@ traceJ = traceM . unpack . decodeUtf8 . encodePretty
 data Intent = Get Day Day
             | Set Day Day
             | SetWithTask Day Day Text
+            | Yes
+            | No
             deriving (Show)
 
 -- TODO detect greetings, insults, and thanks
 
 -- TODO : when instance is incomplete, don't fail, but ask for the rest
-interpretIntent :: MonadIO m => Text -> m (Maybe Intent)
-interpretIntent t =
-  do outcomes <- liftIO $ witMessage t
-     let mout = headMay outcomes
-     return (toIntent =<< mout)
+interpretIntent :: [Outcome] -> Maybe Intent
+interpretIntent outcomes = toIntent =<< headMay outcomes
   where toIntent out = case oIntent out of
           "get_tasks" -> toGetTasks out
           "set_task" -> toSetTask out
+          "yes" -> Just Yes
+          "no" -> Just No
+          e -> traceShow ("Unknown intent : " ++ e) Nothing
+
 
 toGetTasks :: Outcome -> Maybe Intent
 toGetTasks o = do (from, to) <- toDayInterval o
