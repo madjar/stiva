@@ -39,17 +39,23 @@ conversation acid cid =
   do mcreds <- query' acid (GetCreds cid)
      case mcreds of
        Just (login, pass) -> convLoop login pass
-       Nothing -> do _ <- listen -- TODO hack to ignore the first time they say "hi"
+       Nothing -> do _ <- listen -- ignore the first thing they say, and introduce myself
                      say "Hello, I'm Stiva, your friendly epop administration robot!"
                      say "To help you with epop, I'm going to need your epop login and password"
-                     say "What is your epop login?"
-                     login <- listen
-                     say "Okay, what is your epop password?"
-                     pass <- listen
-                     update' acid (AddCreds cid login pass)
-                     -- TODO check the creds are good
+                     (login, pass) <- askCreds
                      say "Okay, let's go! You can ask me `What are my tasks this week?` for example."
                      convLoop login pass
+  where askCreds = do say "What is your epop login?"
+                      login <- listen
+                      say "Okay, what is your epop password?"
+                      pass <- listen
+                      say "Thanks, I'll check that right away"
+                      Right success <- run login pass isLoggedIn
+                      if success
+                        then do update' acid (AddCreds cid login pass)
+                                return (login, pass)
+                        else do say "I'm sorry, the credentials don't seem to work. Let's try again."
+                                askCreds
 
 
 convLoop :: MonadConv m => Text -> Text -> m ()

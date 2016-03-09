@@ -1,4 +1,4 @@
-module Epop where
+module Epop (Epop, runEpop, getAvailableTasks, getTasks, setTasks, isLoggedIn) where
 
 import ClassyPrelude hiding (Element)
 import Control.Concurrent (threadDelay)
@@ -221,3 +221,9 @@ recallWeek week =
           do Just weekText <- attr el "textContent"
              lineWeek <- parseWeek weekText
              return (lineWeek == week)
+
+isLoggedIn :: Epop Bool
+isLoggedIn = do setPageLoadTimeout 10000
+                catchJust (\(FailedCommand typ _) -> if typ == ScriptTimeout then Just () else Nothing)
+                          (openEpop "default.aspx" >> return True)
+                          (\_ -> return False)
