@@ -27,6 +27,7 @@ executable stiva
   default-extensions:  NoImplicitPrelude
                        OverloadedStrings
                        TypeFamilies
+                       RecordWildCards
   build-depends:       base >= 4.7 && < 5
                      , servant
                      --, servant-server

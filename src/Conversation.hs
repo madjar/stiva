@@ -10,8 +10,7 @@ import Data.List.Extra (groupOn)
 import System.IO (hFlush)
 
 import System.Process (callProcess)
-import Data.Acid
-
+import Data.Acid (AcidState)
 import Data.Acid.Advanced   ( query', update' )
 
 import Types
@@ -19,24 +18,37 @@ import Epop
 import Witai
 import Store
 
-conversation :: AcidState BotState -> IO ()
-conversation acid =
-  do mcreds <- query' acid (GetCreds "hardcodedlocal")
+class MonadIO m => MonadConv m where
+  listen :: m Text
+  say :: Text -> m ()
+
+instance MonadConv IO where
+  listen = putStr "You: " >> hFlush stdout >> getLine
+  say t = putStr "Stiva: " >> putStrLn t
+
+confirm :: MonadConv m => m Bool
+confirm = fmap (== "yes") listen  -- TODO use wit.ai for that one
+
+
+conversation :: MonadConv m => AcidState BotState -> Text -> m ()
+conversation acid cid =
+  do mcreds <- query' acid (GetCreds cid)
      case mcreds of
        Just (login, pass) -> convLoop login pass
-       Nothing -> do say "Hello, I'm Stiva, your friendly epop administration robot!"
+       Nothing -> do _ <- listen -- TODO hack to ignore the first time they say "hi"
+                     say "Hello, I'm Stiva, your friendly epop administration robot!"
                      say "To help you with epop, I'm going to need your epop login and password"
                      say "What is your epop login?"
                      login <- listen
                      say "Okay, what is your epop password?"
                      pass <- listen
-                     update' acid (AddCreds "hardcodedlocal" login pass)
+                     update' acid (AddCreds cid login pass)
                      -- TODO check the creds are good
                      say "Okay, let's go! You can ask me `What are my tasks this week?` for example."
                      convLoop login pass
 
 
-convLoop :: Text -> Text -> IO ()
+convLoop :: MonadConv m => Text -> Text -> m ()
 convLoop login pass =
   do intent <- interpretIntent =<< listen
      case intent of
@@ -48,7 +60,7 @@ convLoop login pass =
 formatDay = pack . formatTime defaultTimeLocale "%d %B %Y"
 
 -- TODO handle failure
-handleIntent :: Text -> Text -> Intent -> IO ()
+handleIntent :: MonadConv m => Text -> Text -> Intent -> m ()
 handleIntent login pass (Get from to) =
   do say $ "Okay, fetching tasks between " ++ formatDay from ++ " and " ++ formatDay to
      Right tasks <- run login pass (getTasks [from..to]) -- TODO bad
@@ -59,6 +71,7 @@ handleIntent login pass (Get from to) =
           if firstDay == lastDay
             then say $ task ++ " on " ++ formatDay firstDay
             else say $ task ++ " from " ++ formatDay firstDay ++ " to " ++ formatDay lastDay
+     -- TODO if some are not filled, propose to fill
 handleIntent login pass (Set from to) =
   do say $ "Okay, let's time track between " ++ formatDay from ++ " and " ++ formatDay to
      say "Let me check what tasks I have for that period"
@@ -75,7 +88,7 @@ handleIntent login pass (SetWithTask from to task) =
                        else say "Okay, not changing anything"
        Nothing -> say "Sorry, could not find it." >> askAndSetTask login pass from to tasks
 
-askAndSetTask :: Text -> Text -> Day -> Day -> [Task] -> IO ()
+askAndSetTask :: MonadConv m => Text -> Text -> Day -> Day -> [Task] -> m ()
 askAndSetTask login pass from to tasks =
   do say "Which task where your working on?"
      forM_ (zip [1..] tasks) $ \(i, t) -> say $ "`" ++ tshow i ++ "` " ++ tName t
@@ -85,7 +98,7 @@ askAndSetTask login pass from to tasks =
            Nothing -> say "Sorry, I didn't understand"
 
 -- TODO, say what actually changed (be nicely idempotent)
-setTask :: Text -> Text -> Day -> Day -> Task -> IO ()
+setTask :: MonadConv m => Text -> Text -> Day -> Day -> Task -> m ()
 setTask login pass from to task =
   do say $ "Okay, setting task to " ++ tName task ++ " between " ++ tshow from ++ " and " ++ tshow to
      result <- run login pass (setTasks (zip [from..to] (repeat (Just task))))
@@ -93,14 +106,7 @@ setTask login pass from to task =
        Right () -> say "Done"
        Left err -> say $ "There was an error:" ++ pack err
 
-listen :: IO Text
-listen = putStr "You: " >> hFlush stdout >> getLine
 
-say :: Text -> IO ()
-say t = putStr "Stiva: " >> putStrLn t
 
-confirm :: IO Bool
-confirm = fmap (== "yes") listen  -- TODO use wit.ai for that one
-
-run :: Text -> Text -> Epop a -> IO (Either String a)
-run login pass = runExceptT . runEpop (unpack login) (unpack pass)
+run :: MonadIO m => Text -> Text -> Epop a -> m (Either String a)
+run login pass = liftIO . runExceptT . runEpop (unpack login) (unpack pass)

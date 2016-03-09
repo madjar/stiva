@@ -58,11 +58,12 @@ data Intent = Get Day Day
             | SetWithTask Day Day Text
             deriving (Show)
 
+-- TODO detect greetings, insults, and thanks
 
 -- TODO : when instance is incomplete, don't fail, but ask for the rest
-interpretIntent :: Text -> IO (Maybe Intent)
+interpretIntent :: MonadIO m => Text -> m (Maybe Intent)
 interpretIntent t =
-  do outcomes <- witMessage t
+  do outcomes <- liftIO $ witMessage t
      let mout = headMay outcomes
      return (toIntent =<< mout)
   where toIntent out = case oIntent out of

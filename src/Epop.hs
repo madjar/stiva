@@ -20,7 +20,7 @@ import Types
 type Credentials = (String, String)
 type Epop = ExceptT String (ReaderT Credentials WD)
 
--- TODO urlencode login and password ?
+-- TODO handle the "Planned" checkbox
 openEpop :: String -> Epop ()
 openEpop p = do (user, pass) <- ask
                 openPage ("https://" ++ enc user ++ ":" ++ enc pass ++ "@" ++ epopRoot ++ p)

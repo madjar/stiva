@@ -31,4 +31,5 @@ main :: IO ()
 main = do
   bracket (openLocalState initialBotState)
           createCheckpointAndClose
-          conversation
+          --(\acid -> conversation acid "hardcodedlocal")
+          runSlackBot
