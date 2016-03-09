@@ -9,8 +9,8 @@ packages:
 - '.'
 - slack-api
 - location:
-    git: git@github.com:madjar/hs-webdriver.git
-    commit: 4d1ef4e89a5a8ca96712a433ca71db9e18a4e9a3 # all-my-patches branch
+    git: git@github.com:kallisti-dev/hs-webdriver.git
+    commit: 4d3b1f83121331caee6890948f8db9c2538797f3
   extra-dep: true
 
 # Packages to be pulled from upstream that are not in the resolver (e.g., acme-missiles-0.3)
