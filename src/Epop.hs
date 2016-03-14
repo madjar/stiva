@@ -64,7 +64,19 @@ loadTimeSheetPage day =
   do setWindowSize (1600, 1600) -- Epop only loads what it needs to display, so display it all
      openEpop ("Timesheet.aspx?tsDate=" ++ displayedDay)
      waitUntil 10 (expectInStatusBar displayedDay)
+     void uncheckPlanned
   where displayedDay = formatTime defaultTimeLocale "%d/%m/%Y" day
+
+uncheckPlanned :: Epop Bool
+uncheckPlanned =
+  do optionsButton <- findElem (ById "Ribbon.ContextualTabs.TiedMode.Options-title")
+     click optionsButton
+     plannedCheckBox <- waitUntil 10
+       (findElem (ById "Ribbon.ContextualTabs.TiedMode.Options.ShowHide.PlannedWork-Medium-checkbox"))
+     checked <- isSelected plannedCheckBox
+     if checked
+       then debugSnap >> click plannedCheckBox >> liftIO (threadDelay 500000) >> return True
+       else return False
 
 -- | Returns True if the row of the table is yellow (and thus should be discarded)
 isRowNotYellow :: Element -> Epop Bool
