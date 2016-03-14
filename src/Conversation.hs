@@ -1,3 +1,4 @@
+{-# LANGUAGE TemplateHaskell, LambdaCase, FlexibleInstances #-}
 module Conversation where
 
 import ClassyPrelude
@@ -13,19 +14,25 @@ import Data.Aeson
 import System.Process (callProcess)
 import Data.Acid (AcidState)
 import Data.Acid.Advanced   ( query', update' )
+import Control.Monad.Logger
 
 import Types
 import Epop
 import Witai
 import Store
 
-class MonadIO m => MonadConv m where
+class (MonadIO m, MonadLogger m) => MonadConv m where
   listen :: m Text
   say :: Text -> m ()
 
-instance MonadConv IO where
-  listen = putStr "You: " >> hFlush stdout >> getLine
-  say t = putStr "Stiva: " >> putStrLn t
+
+instance MonadConv (LoggingT IO) where
+  listen = liftIO $ putStr "You: " >> hFlush stdout >> getLine
+  say t = liftIO $ putStr "Stiva: " >> putStrLn t
+
+instance MonadConv m => MonadConv (ExceptT e m) where
+  listen = lift listen
+  say = lift . say
 
 confirm :: MonadConv m => m Bool
 confirm = do outcomes <- witContextMessage (object ["state" .= ("asked_confirmation" :: Text)]) =<< listen
@@ -49,20 +56,27 @@ conversation acid cid =
                       login <- listen
                       say "Okay, what is your epop password?"
                       pass <- listen
-                      say "Thanks, I'll check that right away"
-                      Right success <- run login pass isLoggedIn
-                      if success
-                        then do update' acid (AddCreds cid login pass)
-                                return (login, pass)
-                        else do say "I'm sorry, the credentials don't seem to work. Let's try again."
-                                askCreds
+                      say "Thanks, I'll check that right away. Maybe you can delete the last message in the meantime, so your password doesn't stay there."
+                      success <- runExceptT $ run login pass isLoggedIn
+                      case success of
+                        Right True -> do update' acid (AddCreds cid login pass)
+                                         return (login, pass)
+                        Right False ->  do say "I'm sorry, the credentials don't seem to work. Let's try again."
+                                           askCreds
+                        Left e -> do say $ "I'm very sorry, an error occured while I was checking the credentials: . It says:\n```" ++ pack e ++ "```"
+                                     $(logWarn) $ "error while testing creds: " ++ pack e
+                                     askCreds
 
 
 convLoop :: MonadConv m => Text -> Text -> m ()
 convLoop login pass =
   do intent <- interpretIntent <$> (witMessage =<< listen)
      case intent of
-       Just i -> handleIntent login pass i
+       Just i -> runExceptT (handleIntent login pass i) >>= \case
+         Right () -> return ()
+         Left e -> do say $ "I really sorry, it looks like something broke when I tried to touch it. It says:\n```" ++ pack e ++ "```"
+                      $(logWarn) $ "Error while handling intent:\n" ++ tshow i ++ "\n" ++ pack e
+                      --TODO also handle exceptions
        Nothing -> say "Sorry, I didn't understand"
      convLoop login pass
 
@@ -70,26 +84,26 @@ convLoop login pass =
 formatDay = pack . formatTime defaultTimeLocale "%d %B %Y"
 
 -- TODO handle failure
-handleIntent :: MonadConv m => Text -> Text -> Intent -> m ()
+handleIntent :: MonadConv m => Text -> Text -> Intent -> ExceptT String m ()
 handleIntent login pass (Get from to) =
   do say $ "Okay, fetching tasks between " ++ formatDay from ++ " and " ++ formatDay to
-     Right tasks <- run login pass (getTasks [from..to]) -- TODO bad
+     tasks <- run login pass (getTasks [from..to])
      forM_ (groupOn snd tasks) $ \daysAndTasks ->
        do let (firstDay, mtask) = headEx daysAndTasks
               (lastDay, _) = lastEx daysAndTasks
               task = maybe "Nothing" tName mtask
           if firstDay == lastDay
             then say $ task ++ " on " ++ formatDay firstDay
-            else say $ task ++ " from " ++ formatDay firstDay ++ " to " ++ formatDay lastDay
+            else say $ task ++ " from " ++ formatDay firstDay ++ " to " ++ formatDay lastDay ++ ". That's " ++ tshow (length daysAndTasks) ++ " days."
      -- TODO if some are not filled, propose to fill
 handleIntent login pass (Set from to) =
   do say $ "Okay, let's time track between " ++ formatDay from ++ " and " ++ formatDay to
      say "Let me check what tasks I have for that period"
-     Right tasks <- run login pass (getAvailableTasks from) -- TODO bad
+     tasks <- run login pass (getAvailableTasks from) -- TODO bad
      askAndSetTask login pass from to tasks
 handleIntent login pass (SetWithTask from to task) =
   do say $ "Let me check if I can find a task that matches \"" ++ task ++ "\" between " ++ formatDay from ++ " and " ++ formatDay to
-     Right tasks <- run login pass (getAvailableTasks from) -- TODO bad
+     tasks <- run login pass (getAvailableTasks from) -- TODO bad
      case find (\t -> toLower task `isInfixOf` toLower (tName t)) tasks of
        Just t -> do say $ "Found " ++ tName t ++ ". Do you want me to set it to that task?"
                     doIt <- confirm
@@ -102,7 +116,7 @@ handleIntent _ _ Compliment = say "Thanks, I try to do my best!"
 handleIntent _ _ Thanks = say "It's a pleasure to help"
 handleIntent _ _ Help = say "I'm here to help you with epop. You can ask me `What are my tasks this week?` or `Let's time track last week!` for example."
 
-askAndSetTask :: MonadConv m => Text -> Text -> Day -> Day -> [Task] -> m ()
+askAndSetTask :: MonadConv m => Text -> Text -> Day -> Day -> [Task] -> ExceptT String m ()
 askAndSetTask login pass from to tasks =
   do say "Which task where your working on?"
      forM_ (zip [1..] tasks) $ \(i, t) -> say $ "`" ++ tshow i ++ "` " ++ tName t
@@ -112,15 +126,11 @@ askAndSetTask login pass from to tasks =
            Nothing -> say "Sorry, I didn't understand"
 
 -- TODO, say what actually changed (be nicely idempotent)
-setTask :: MonadConv m => Text -> Text -> Day -> Day -> Task -> m ()
+setTask :: MonadConv m => Text -> Text -> Day -> Day -> Task -> ExceptT String m ()
 setTask login pass from to task =
   do say $ "Okay, setting task to " ++ tName task ++ " between " ++ tshow from ++ " and " ++ tshow to
      result <- run login pass (setTasks (zip [from..to] (repeat (Just task))))
-     case result of
-       Right () -> say "Done"
-       Left err -> say $ "There was an error:" ++ pack err
+     say "Done"
 
-
-
-run :: MonadIO m => Text -> Text -> Epop a -> m (Either String a)
-run login pass = liftIO . runExceptT . runEpop (unpack login) (unpack pass)
+run :: MonadIO m => Text -> Text -> Epop a -> ExceptT String m a
+run login pass = ExceptT . liftIO . runExceptT . runEpop (unpack login) (unpack pass)

@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, TemplateHaskell #-}
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, TemplateHaskell, FlexibleContexts, UndecidableInstances #-}
 module Bot where
 
 import ClassyPrelude
@@ -22,12 +22,12 @@ data ConvChannels = ConvChannels { fromThem :: Chan Text,
 
 -- Give Web.Slack.Types.Id (Id) the Ord instance to set it as key for this Map
 type Convs = Map Text ConvChannels
-type ConvReader = ReaderT ConvChannels IO
-instance MonadConv ConvReader where
+
+instance (MonadIO m, MonadReader ConvChannels m, MonadLogger m) => MonadConv m where
   listen = do chan <- asks fromThem
-              readChan chan
+              liftIO $ readChan chan
   say t = do chan <- asks fromUs
-             writeChan chan t
+             liftIO $ writeChan chan t
 
 
 runSlackBot :: AcidState BotState -> IO ()
@@ -46,14 +46,13 @@ epopBot acid (Message cid (UserComment user) msg _ _ _)
        $(logDebug) ("User " ++ (user ^. getId) ++ " says " ++ msg)
 
        let tCid = cid ^. getId
-       -- TODO add logging before allowing others to use it
        mchannels <- uses userState (lookup tCid)
        fromThem <- case mchannels of
          Just cs -> return (fromThem cs)
          Nothing -> do $(logInfo) ("First contact with " ++ (user ^. getId) ++ " this session. Creating conversation thread.")
                        channels <- lift $ mkChannels cid
                        userState %= insertMap tCid channels
-                       void $ liftIO $ forkIO $ runReaderT (conversation acid tCid) channels
+                       void . liftIO . forkIO $ runStderrLoggingT $ runReaderT (conversation acid tCid) channels
                        return (fromThem channels)
        liftIO $ writeChan fromThem msg
 epopBot _ _ = return ()
