@@ -1,21 +1,20 @@
-{-# LANGUAGE CPP, DeriveDataTypeable, FlexibleContexts,
-  GeneralizedNewtypeDeriving, MultiParamTypeClasses,
-  TemplateHaskell, TypeFamilies, RecordWildCards #-}
+{-# LANGUAGE CPP                        #-}
+{-# LANGUAGE DeriveDataTypeable         #-}
+{-# LANGUAGE FlexibleContexts           #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses      #-}
+{-# LANGUAGE RecordWildCards            #-}
+{-# LANGUAGE TemplateHaskell            #-}
+{-# LANGUAGE TypeFamilies               #-}
 module Store where
 
-import ClassyPrelude
-
--- import Control.Applicative  ( (<$>) )
--- import Control.Exception    ( bracket )
--- import Control.Monad        ( msum )
-import Data.Data            ( Data, Typeable )
-import Data.Acid            ( AcidState, Query, Update
-                            , makeAcidic, openLocalState )
--- import Data.Acid.Advanced   ( query', update' )
-import Data.Acid.Local      ( createCheckpointAndClose )
-import Data.SafeCopy        ( base, deriveSafeCopy )
-import Control.Monad.State  ( get, put, modify )
-import Control.Monad.Reader (asks)
+import           ClassyPrelude
+import           Control.Monad.Reader (asks)
+import           Control.Monad.State  (get, modify, put)
+import           Data.Acid            (AcidState, Query, Update, makeAcidic,
+                                       openLocalState)
+import           Data.Data            (Data, Typeable)
+import           Data.SafeCopy        (base, deriveSafeCopy)
 
 type UserId = Text
 

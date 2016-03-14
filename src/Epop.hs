@@ -1,21 +1,18 @@
 module Epop (Epop, runEpop, getAvailableTasks, getTasks, setTasks, isLoggedIn) where
 
-import ClassyPrelude hiding (Element)
-import Control.Concurrent (threadDelay)
-import Control.Error
-import Control.Monad.Extra (findM)
-import Data.Aeson ((.=), Value (Null))
-import Data.List.Extra (dropEnd, elemIndex, (!!), groupSort)
-import Data.Time (addDays)
-import Data.Time.Calendar.WeekDate (fromWeekDate, toWeekDate)
-import System.Process (spawnProcess, terminateProcess)
-import Test.WebDriver
-import Test.WebDriver.Class (WebDriver, doCommand)
-import Test.WebDriver.Commands.Wait (waitUntil, unexpected, expect, expectAlertOpen)
-import Test.WebDriver.Session (WDSessionState, getSession, putSession)
-import Test.WebDriver.Utils (urlEncode)
+import           ClassyPrelude                hiding (Element)
+import           Control.Concurrent           (threadDelay)
+import           Control.Error
+import           Control.Monad.Extra          (findM)
+import           Data.List.Extra              (dropEnd, elemIndex, groupSort,
+                                               (!!))
+import           Data.Time                    (addDays)
+import           Test.WebDriver
+import           Test.WebDriver.Commands.Wait (expect, expectAlertOpen,
+                                               unexpected, waitUntil)
+import           Test.WebDriver.Utils         (urlEncode)
 
-import Types
+import           Types
 
 type Credentials = (String, String)
 type Epop = ExceptT String (ReaderT Credentials WD)

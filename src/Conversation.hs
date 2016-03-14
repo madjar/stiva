@@ -1,25 +1,21 @@
-{-# LANGUAGE TemplateHaskell, LambdaCase, FlexibleInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE LambdaCase        #-}
+{-# LANGUAGE TemplateHaskell   #-}
 module Conversation where
 
-import ClassyPrelude
-import Data.Time
-import Control.Error hiding (headMay)
-import Control.Concurrent
-import Control.Lens hiding (index, (.=))
-import Data.Aeson.Lens
-import Data.List.Extra (groupOn)
-import System.IO (hFlush)
-import Data.Aeson
+import           ClassyPrelude
+import           Control.Error        hiding (headMay)
+import           Control.Monad.Logger
+import           Data.Acid            (AcidState)
+import           Data.Acid.Advanced   (query', update')
+import           Data.Aeson
+import           Data.List.Extra      (groupOn)
+import           System.IO            (hFlush)
 
-import System.Process (callProcess)
-import Data.Acid (AcidState)
-import Data.Acid.Advanced   ( query', update' )
-import Control.Monad.Logger
-
-import Types
-import Epop
-import Witai
-import Store
+import           Epop
+import           Store
+import           Types
+import           Witai
 
 class (MonadIO m, MonadLogger m) => MonadConv m where
   listen :: m Text

@@ -1,20 +1,20 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Witai where
 
-import ClassyPrelude
-import Network.Wreq
-import Control.Lens
-import Data.Aeson
-import Data.Aeson.TH hiding (Options)
-import Data.Aeson.Lens
-import Data.Aeson.Encode.Pretty
-import Data.Time
+import           ClassyPrelude
+import           Control.Lens
+import           Data.Aeson
+import           Data.Aeson.Encode.Pretty
+import           Data.Aeson.Lens
+import           Data.Aeson.TH            hiding (Options)
+import           Data.Time
+import           Network.Wreq
 
 witToken = "FWBO35WXET2RIBCDF3IJTHXX6ENQUXG6"
 
-data Outcome = Outcome { o_text :: Text
-                       , oIntent :: Text
-                       , oEntities :: Value
+data Outcome = Outcome { o_text      :: Text
+                       , oIntent     :: Text
+                       , oEntities   :: Value
                        , oConfidence :: Double
                        } deriving Show
 

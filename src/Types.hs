@@ -1,14 +1,14 @@
+{-# LANGUAGE DeriveGeneric   #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE DeriveGeneric#-}
 module Types where
 
-import ClassyPrelude
+import           ClassyPrelude
 
-import Data.Aeson
-import Data.Aeson.TH
-import Data.Attoparsec.Text
-import Servant.Common.Text
-import Data.Time.Calendar.WeekDate (fromWeekDate, toWeekDate)
+import           Data.Aeson
+import           Data.Aeson.TH
+import           Data.Attoparsec.Text
+import           Data.Time.Calendar.WeekDate (fromWeekDate, toWeekDate)
+import           Servant.Common.Text
 
 data Task = Task { tProject :: Text, tName :: Text} deriving (Show, Generic, Eq)
 
