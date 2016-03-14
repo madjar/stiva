@@ -25,9 +25,10 @@ openEpop p = do (user, pass) <- ask
         enc = unpack . urlEncode . pack
 
 runEpop :: String -> String -> Epop a -> ExceptT String IO a
-runEpop user pass = mapExceptT (runSession conf . finallyClose . flip runReaderT creds)
+runEpop user pass = handleAny handler . mapExceptT (runSession conf . finallyClose . flip runReaderT creds)
   where conf = defaultConfig { wdHost = "192.168.99.100" }
         creds = (user, pass)
+        handler e = throwE (show e)
 
 listWeekLines :: Epop [Element]
 listWeekLines =

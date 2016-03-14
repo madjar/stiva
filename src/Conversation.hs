@@ -72,7 +72,6 @@ convLoop login pass =
          Right () -> return ()
          Left e -> do say $ "I really sorry, it looks like something broke when I tried to touch it. It says:\n```" ++ pack e ++ "```"
                       $(logWarn) $ "Error while handling intent:\n" ++ tshow i ++ "\n" ++ pack e
-                      --TODO also handle exceptions
        Nothing -> say "Sorry, I didn't understand"
      convLoop login pass
 
@@ -129,4 +128,4 @@ setTask login pass from to task =
      say "Done"
 
 run :: MonadIO m => Text -> Text -> Epop a -> ExceptT String m a
-run login pass = ExceptT . liftIO . runExceptT . runEpop (unpack login) (unpack pass)
+run login pass = mapExceptT liftIO . runEpop (unpack login) (unpack pass)
