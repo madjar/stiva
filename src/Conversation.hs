@@ -76,6 +76,7 @@ convLoop login pass =
      convLoop login pass
 
 
+formatDay :: Day -> Text
 formatDay = pack . formatTime defaultTimeLocale "%d %B %Y"
 
 -- TODO handle failure
@@ -110,6 +111,8 @@ handleIntent _ _ Greetings = say "Hello to you!"
 handleIntent _ _ Compliment = say "Thanks, I try to do my best!"
 handleIntent _ _ Thanks = say "It's a pleasure to help"
 handleIntent _ _ Help = say "I'm here to help you with epop. You can ask me `What are my tasks this week?` or `Let's time track last week!` for example."
+handleIntent _ _ i = do $(logWarn) $ "Unexpected intent: " ++ tshow i
+                        say "I wasn't expecting you to say that."
 
 askAndSetTask :: MonadConv m => Text -> Text -> Day -> Day -> [Task] -> ExceptT String m ()
 askAndSetTask login pass from to tasks =
@@ -124,7 +127,7 @@ askAndSetTask login pass from to tasks =
 setTask :: MonadConv m => Text -> Text -> Day -> Day -> Task -> ExceptT String m ()
 setTask login pass from to task =
   do say $ "Okay, setting task to " ++ tName task ++ " between " ++ tshow from ++ " and " ++ tshow to
-     result <- run login pass (setTasks (zip [from..to] (repeat (Just task))))
+     run login pass (setTasks (zip [from..to] (repeat (Just task))))
      say "Done"
 
 run :: MonadIO m => Text -> Text -> Epop a -> ExceptT String m a
