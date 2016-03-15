@@ -1,23 +1,25 @@
 module Main where
 
-import ClassyPrelude
+import           ClassyPrelude
 -- import Network.Wai.Middleware.Cors
 -- import Servant
 -- import Network.Wai
 -- import Network.Wai.Handler.Warp
 -- import Network.Wai.Middleware.RequestLogger
-import Control.Error
-import Data.Acid            ( AcidState, Query, Update
-                            , makeAcidic, openLocalState )
-import Data.Acid.Local      ( createCheckpointAndClose )
+import           Control.Error
+import           Data.Acid       (AcidState, Query, Update, closeAcidState,
+                                  makeAcidic, openLocalState)
+import           Data.Acid.Local (createCheckpointAndClose, localCopy)
 
-import Epop
-import Types
-import API.Swagger
-import API.Web
-import Bot
-import Conversation
-import Store
+import           API.Swagger
+import           API.Web
+import           Bot
+import           Conversation
+import           Epop
+import           Store
+import           Types
+import Data.Acid.Abstract (downcast)
+import Text.Show.Pretty
 
 -- app :: Application
 -- app = logStdoutDev . simpleCors $ serve api swaggerServer
@@ -33,3 +35,9 @@ main = do
           createCheckpointAndClose
           --(\acid -> conversation acid "hardcodedlocal")
           runSlackBot
+
+dumpState :: IO ()
+dumpState = bracket (openLocalState initialBotState) closeAcidState dumpIt
+  where dumpIt :: AcidState BotState -> IO ()
+        dumpIt s = do st <- readIORef . localCopy . downcast $ s
+                      putStrLn $ pack $ ppShow st
