@@ -132,6 +132,6 @@ setTask login pass from to task =
      run login pass (setTasks (zip [from..to] (repeat (Just task))))
      say "Done"
 
--- TODO if it fails, try again
-run :: MonadIO m => Text -> Text -> Epop a -> ExceptT String m a
-run login pass = mapExceptT liftIO . runEpop (unpack login) (unpack pass)
+run :: MonadConv m => Text -> Text -> Epop a -> ExceptT String m a
+run login pass action = runIt `catchE` (\_ -> say "Oops, something went wrong. Don't worry, I'll try again." >> runIt)
+  where runIt = mapExceptT liftIO $ runEpop (unpack login) (unpack pass) action
