@@ -28,7 +28,7 @@ runEpop :: String -> String -> Epop a -> ExceptT String IO a
 runEpop user pass = handleAny handler . mapExceptT (runSession conf . finallyClose . flip runReaderT creds)
   where conf = defaultConfig { wdHost = "192.168.99.100" }
         creds = (user, pass)
-        handler e = throwE (show e)
+        handler e = throwE (show e) -- TODO screenshot when it crashes
 
 listWeekLines :: Epop [Element]
 listWeekLines =
@@ -61,10 +61,11 @@ expectInStatusBar text =
 -- TODO Fail gracefully when the page doesn't exist (before I arrived)
 loadTimeSheetPage :: Day -> Epop ()
 loadTimeSheetPage day =
-  do setWindowSize (3200, 3200) -- Epop only loads what it needs to display, so display it all
+  do setWindowSize (1600, 1600) -- Epop only loads what it needs to display, so display it all
      openEpop ("Timesheet.aspx?tsDate=" ++ displayedDay)
      waitUntil 10 (expectInStatusBar displayedDay)
      void uncheckPlanned
+     -- TODO handle the "comment on submit" textbox
   where displayedDay = formatTime defaultTimeLocale "%d/%m/%Y" day
 
 uncheckPlanned :: Epop Bool
@@ -156,8 +157,9 @@ setTasks  = mapByWeek updateWeek fst
                   (recallWeek week)
 
              Table tasks days table <- parseTimeSheet week
-             forM_ daysAndTasks $ \(day, mtask) ->
-               do tryAssert "day not in table" (day `elem` days)
+             let workDaysAndTasks = filter (isWorkDay . fst) daysAndTasks
+             forM_ workDaysAndTasks $ \(day, mtask) ->
+               do tryAssert ("day " ++ show day ++ " not in table") (day `elem` days)
                   case mtask of
                     Just task -> tryAssert "task not in table" (task `elem` tasks)
                     Nothing -> return ()
@@ -169,8 +171,8 @@ setTasks  = mapByWeek updateWeek fst
              -- Check
              fullTable <- parseTimeSheet week
              result <- tasksByDay fullTable
-             tryAssert ("Error when filling week:\nWanted " ++ show daysAndTasks ++ "\nGot " ++ show result)
-                       (all (`elem` result) daysAndTasks)
+             tryAssert ("Error when filling week:\nWanted " ++ show workDaysAndTasks ++ "\nGot " ++ show result)
+                       (all (`elem` result) workDaysAndTasks)
 
         fillElem e val =
           do click e
@@ -187,7 +189,7 @@ setTasks  = mapByWeek updateWeek fst
               turnInButton <- waitUntil 10
                 (findElem (ById "Ribbon.ContextualTabs.TiedMode.Home.Sheet.SubmitTimesheet-Menu32"))
               click turnInButton
-              waitUntil 10 (expectInStatusBar "Your timesheet has been approved")
+              waitUntil 15 (expectInStatusBar "Your timesheet has been approved")
 
 
 
@@ -233,7 +235,7 @@ recallWeek week =
              return (lineWeek == week)
 
 isLoggedIn :: Epop Bool
-isLoggedIn = do setPageLoadTimeout 10000
+isLoggedIn = do setPageLoadTimeout 15000 -- TODO maybe another page is faster?
                 catchJust (\(FailedCommand typ _) -> if typ == ScriptTimeout then Just () else Nothing)
                           (openEpop "default.aspx" >> return True)
                           (\_ -> return False)

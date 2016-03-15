@@ -66,7 +66,7 @@ mkChannels cid = do fromUs <- liftIO newChan
 
 forwardMessage :: (Text -> IO ()) -> Chan Text -> IO ()
 forwardMessage send chan = do msg <- readChan chan
-                              send msg
+                              send msg  -- TODO Be a bit slower, and add "typing"
                               forwardMessage send chan
 
 isDirect :: ChannelId -> Bool

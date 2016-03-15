@@ -46,9 +46,9 @@ conversation acid cid =
                      say "Hello, I'm Stiva, your friendly epop administration robot!"
                      say "To help you with epop, I'm going to need your epop login and password"
                      (login, pass) <- askCreds
-                     say "Okay, let's go! You can ask me `What are my tasks this week?` for example."
+                     say "Okay, let's go! You can ask me `What are my tasks this week?` for example." -- TODO more examples
                      convLoop login pass
-  where askCreds = do say "What is your epop login?"
+  where askCreds = do say "What is your epop login?" -- TODO suggest a login from name, remove the g1?
                       login <- listen
                       say "Okay, what is your epop password?"
                       pass <- listen
@@ -56,8 +56,10 @@ conversation acid cid =
                       success <- runExceptT $ run login pass isLoggedIn
                       case success of
                         Right True -> do update' acid (AddCreds cid login pass)
+                                         $(logInfo) $ "Successful login for " ++ login
                                          return (login, pass)
                         Right False ->  do say "I'm sorry, the credentials don't seem to work. Let's try again."
+                                           $(logInfo) $ "Failed login attempt for " ++ login
                                            askCreds
                         Left e -> do say $ "I'm very sorry, an error occured while I was checking the credentials: . It says:\n```" ++ pack e ++ "```"
                                      $(logWarn) $ "error while testing creds: " ++ pack e
@@ -130,5 +132,6 @@ setTask login pass from to task =
      run login pass (setTasks (zip [from..to] (repeat (Just task))))
      say "Done"
 
+-- TODO if it fails, try again
 run :: MonadIO m => Text -> Text -> Epop a -> ExceptT String m a
 run login pass = mapExceptT liftIO . runEpop (unpack login) (unpack pass)

@@ -29,6 +29,10 @@ weekOfDay :: Day -> Week
 weekOfDay d = Week y w
   where (y, w, _) = toWeekDate d
 
+isWorkDay :: Day -> Bool
+isWorkDay d = weekDay <= 5
+  where (_, _, weekDay) = toWeekDate d
+
 instance FromJSON Week where
   parseJSON = withText "week" parseWeek
 
