@@ -61,7 +61,7 @@ expectInStatusBar text =
 -- TODO Fail gracefully when the page doesn't exist (before I arrived)
 loadTimeSheetPage :: Day -> Epop ()
 loadTimeSheetPage day =
-  do setWindowSize (1600, 1600) -- Epop only loads what it needs to display, so display it all
+  do setWindowSize (3200, 3200) -- Epop only loads what it needs to display, so display it all
      openEpop ("Timesheet.aspx?tsDate=" ++ displayedDay)
      waitUntil 10 (expectInStatusBar displayedDay)
      void uncheckPlanned
