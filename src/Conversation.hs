@@ -81,7 +81,6 @@ convLoop login pass =
 formatDay :: Day -> Text
 formatDay = pack . formatTime defaultTimeLocale "%d %B %Y"
 
--- TODO handle failure
 handleIntent :: MonadConv m => Text -> Text -> Intent -> ExceptT String m ()
 handleIntent login pass (Get from to) =
   do say $ "Okay, fetching tasks between " ++ formatDay from ++ " and " ++ formatDay to

@@ -158,13 +158,17 @@ setTasks  = mapByWeek updateWeek fst
 
              Table tasks days table <- parseTimeSheet week
              let workDaysAndTasks = filter (isWorkDay . fst) daysAndTasks
-             forM_ workDaysAndTasks $ \(day, mtask) ->
-               do tryAssert ("day " ++ show day ++ " not in table") (day `elem` days)
-                  case mtask of
-                    Just task -> tryAssert "task not in table" (task `elem` tasks)
-                    Nothing -> return ()
-                  forM_ table $ \((t, d), e) ->
-                    when (d == day) (fillElem e (if mtask == Just t then "1d" else "0d"))
+             let fillAll = forM_ workDaysAndTasks $ \(day, mtask) ->
+                   do tryAssert ("day " ++ show day ++ " not in table") (day `elem` days)
+                      case mtask of
+                        Just task -> tryAssert "task not in table" (task `elem` tasks)
+                        Nothing -> return ()
+                      forM_ table $ \((t, d), e) ->
+                        when (d == day) (fillElem e (if mtask == Just t then "1d" else "0d"))
+
+             -- XXX Dirty hack to increase its chances to work
+             fillAll >> fillAll
+
              -- TODO do not submit if not fully filled
              submitWeek
 
@@ -235,7 +239,7 @@ recallWeek week =
              return (lineWeek == week)
 
 isLoggedIn :: Epop Bool
-isLoggedIn = do setPageLoadTimeout 15000 -- TODO maybe another page is faster?
+isLoggedIn = do setPageLoadTimeout 20000 -- TODO maybe another page is faster?
                 catchJust (\(FailedCommand typ _) -> if typ == ScriptTimeout then Just () else Nothing)
-                          (openEpop "default.aspx" >> return True)
+                          (openEpop "Timesheet.aspx" >> return True)
                           (\_ -> return False)
