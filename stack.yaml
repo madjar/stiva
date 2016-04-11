@@ -2,20 +2,18 @@
 # For more information, see: http://docs.haskellstack.org/en/stable/yaml_configuration/
 
 # Specifies the GHC version and set of packages available (e.g., lts-3.5, nightly-2015-09-21, ghc-7.10.2)
-resolver: nightly-2016-02-25
+resolver: nightly-2016-04-10
 
 # Local packages, usually specified by relative directory name
 packages:
 - '.'
-- slack-api
 - location:
-    git: git@github.com:kallisti-dev/hs-webdriver.git
-    commit: 4d3b1f83121331caee6890948f8db9c2538797f3
+    git: git@github.com:madjar/slack-api.git
+    commit: 8ccb18e98d2adacb6f464105639e958bfb6e8bed
   extra-dep: true
 
 # Packages to be pulled from upstream that are not in the resolver (e.g., acme-missiles-0.3)
-extra-deps:
-- aeson-0.11.0.0
+# extra-deps: []
 
 allow-newer: true # For compatibility with aeson
 
