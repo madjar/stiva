@@ -9,8 +9,8 @@ import           Data.Aeson.Lens
 import           Data.Aeson.TH            hiding (Options)
 import           Data.Time
 import           Network.Wreq
+import System.Environment (getEnv)
 
-witToken = "FWBO35WXET2RIBCDF3IJTHXX6ENQUXG6"
 
 data Outcome = Outcome { o_text      :: Text
                        , oIntent     :: Text
@@ -28,11 +28,13 @@ witContextMessage :: MonadIO m => Value -> Text -> m [Outcome]
 witContextMessage context = witMessageWithOptions (param "context" .~ [decodeUtf8 . toStrict . encode $ context])
 
 witMessageWithOptions :: MonadIO m => (Options -> Options) -> Text -> m [Outcome]
-witMessageWithOptions f msg = do r <- liftIO $ getWith opts "https://api.wit.ai/message"
-                                 return $ r ^. responseBody . key "outcomes" . _JSON
-  where opts = defaults & param "q" .~ [msg]
+witMessageWithOptions f msg =
+  do witToken <- liftIO $ fromString <$> getEnv "WIT_TOKEN" -- TODO refactor that nicely
+     let opts = defaults & param "q" .~ [msg]
                         & header "Authorization" .~ ["Bearer " ++ witToken]
                         & f
+     r <- liftIO $ getWith opts "https://api.wit.ai/message"
+     return $ r ^. responseBody . key "outcomes" . _JSON
 
 -- TODO : not a maybe, but a proper Either
 toDayInterval :: Outcome -> Maybe (Day, Day)
