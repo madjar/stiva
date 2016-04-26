@@ -42,7 +42,7 @@ toDayInterval o =
   do dt <- oEntities o ^? key "datetime" . nth 0 -- TODO what about when there's more than one? (ex: January and February)
      case dt ^? key "type" . _String of
        Just "interval" -> (,) <$> dt ^? key "from" . key "value" . _JSON . to utctDay
-                              <*> dt ^? key "to" . key "value" . _JSON . to utctDay
+                              <*> dt ^? key "to" . key "value" . _JSON . to utctDay . to (addDays (-1))
        Just "value" -> do from <- dt ^? key "value" . _JSON . to utctDay
                           let to = case dt ^? key "grain" . _String of
                                 Just "day" -> from
