@@ -20,6 +20,7 @@ import           Store
 import           Types
 import Data.Acid.Abstract (downcast)
 import Text.Show.Pretty
+import System.Environment (getEnv)
 
 -- app :: Application
 -- app = logStdoutDev . simpleCors $ serve api swaggerServer
@@ -28,9 +29,9 @@ import Text.Show.Pretty
 -- startApp = run 8080 app
 
 
-
 main :: IO ()
 main = do
+  getEnv "WIT_TOKEN" -- Fail fast when we don't have a token
   bracket (openLocalState initialBotState)
           createCheckpointAndClose
           --(\acid -> conversation acid "hardcodedlocal")
