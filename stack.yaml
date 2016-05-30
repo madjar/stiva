@@ -2,7 +2,7 @@
 # For more information, see: http://docs.haskellstack.org/en/stable/yaml_configuration/
 
 # Specifies the GHC version and set of packages available (e.g., lts-3.5, nightly-2015-09-21, ghc-7.10.2)
-resolver: nightly-2016-04-10
+resolver: lts-6.0
 
 docker:
   enable: false
@@ -18,7 +18,7 @@ packages:
 - '.'
 - location:
     git: git@github.com:madjar/slack-api.git
-    commit: 8ccb18e98d2adacb6f464105639e958bfb6e8bed
+    commit: a2e3ad64f9d8f637123850793d5d7981b0e5bb1c
   extra-dep: true
 
 # Packages to be pulled from upstream that are not in the resolver (e.g., acme-missiles-0.3)

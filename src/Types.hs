@@ -8,7 +8,7 @@ import           Data.Aeson
 import           Data.Aeson.TH
 import           Data.Attoparsec.Text
 import           Data.Time.Calendar.WeekDate (fromWeekDate, toWeekDate)
-import           Servant.Common.Text
+-- import           Servant.Common.Text
 
 data Task = Task { tProject :: Text, tName :: Text} deriving (Show, Generic, Eq)
 
@@ -39,5 +39,5 @@ instance FromJSON Week where
 instance ToJSON Week where
   toJSON (Week year week) = String (tshow year ++ "-Wk" ++ tshow week)
 
-instance FromText Week where
-  fromText = parseWeek
+-- instance FromText Week where
+--   fromText = parseWeek

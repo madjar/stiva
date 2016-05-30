@@ -1,7 +1,6 @@
 module Epop (Epop, runEpop, getAvailableTasks, getTasks, setTasks, isLoggedIn) where
 
 import           ClassyPrelude                hiding (Element)
-import           Control.Concurrent           (threadDelay)
 import           Control.Error
 import           Control.Monad.Extra          (findM)
 import           Data.List.Extra              (dropEnd, elemIndex, groupSort,
@@ -26,7 +25,7 @@ openEpop p = do (user, pass) <- ask
 
 runEpop :: String -> String -> Epop a -> ExceptT String IO a
 runEpop user pass = handleAny handler . mapExceptT (runSession conf . finallyClose . flip runReaderT creds)
-  where conf = defaultConfig { wdHost = "192.168.99.100" }
+  where conf = defaultConfig { wdHost = "127.0.0.1" }
         creds = (user, pass)
         handler e = throwE (show e) -- TODO screenshot when it crashes
 
@@ -76,7 +75,7 @@ uncheckPlanned =
        (findElem (ById "Ribbon.ContextualTabs.TiedMode.Options.ShowHide.PlannedWork-Medium-checkbox"))
      checked <- isSelected plannedCheckBox
      if checked
-       then debugSnap >> click plannedCheckBox >> liftIO (threadDelay 500000) >> return True
+       then debugSnap >> click plannedCheckBox >> threadDelay 500000 >> return True
        else return False
 
 -- | Returns True if the row of the table is yellow (and thus should be discarded)
@@ -230,7 +229,7 @@ recallWeek week =
      click recallButton
      _ <- waitUntil 5 expectAlertOpen
      acceptAlert
-     liftIO $ threadDelay 400000
+     threadDelay 400000
      -- TODO don't just wait, check the line says "In Progress"
 
   where isRightLine el =
