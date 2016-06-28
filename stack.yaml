@@ -18,7 +18,7 @@ packages:
 - '.'
 - location:
     git: git@github.com:madjar/slack-api.git
-    commit: a2e3ad64f9d8f637123850793d5d7981b0e5bb1c
+    commit: 88de755ffbf654f91b1af1eb5931f588c13a9e94
   extra-dep: true
 
 # Packages to be pulled from upstream that are not in the resolver (e.g., acme-missiles-0.3)

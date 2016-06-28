@@ -30,11 +30,9 @@ instance (MonadIO m, MonadReader ConvChannels m, MonadLogger m) => MonadConv m w
              liftIO $ writeChan chan t
 
 
-runSlackBot :: AcidState BotState -> IO ()
-runSlackBot acid = do
-  let apiToken = "xoxb-23258812385-7LWKFE8WILancZgTz7ZAcUoC" :: String
-      config = SlackConfig apiToken
-  runBot config (epopBot acid) mempty
+runSlackBot :: String -> AcidState BotState -> IO ()
+runSlackBot slackToken acid =
+  runBot (SlackConfig slackToken) (epopBot acid) mempty
 
 
 epopBot :: AcidState BotState -> SlackBot Convs

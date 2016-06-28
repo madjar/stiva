@@ -88,7 +88,7 @@ handleIntent login pass (Get from to) =
      forM_ (groupOn snd tasks) $ \daysAndTasks ->
        do let (firstDay, mtask) = headEx daysAndTasks
               (lastDay, _) = lastEx daysAndTasks
-              task = maybe "Nothing" tName mtask
+              task = maybe "Nothing" (\t -> tProject t ++ " - " ++ tName t) mtask
           if firstDay == lastDay
             then say $ task ++ " on " ++ formatDay firstDay
             else say $ task ++ " from " ++ formatDay firstDay ++ " to " ++ formatDay lastDay ++ ". That's " ++ tshow (length daysAndTasks) ++ " days."
@@ -101,8 +101,8 @@ handleIntent login pass (Set from to) =
 handleIntent login pass (SetWithTask from to task) =
   do say $ "Let me check if I can find a task that matches \"" ++ task ++ "\" between " ++ formatDay from ++ " and " ++ formatDay to
      tasks <- run login pass (getAvailableTasks from) -- TODO bad
-     case find (\t -> toLower task `isInfixOf` toLower (tName t)) tasks of
-       Just t -> do say $ "Found " ++ tName t ++ ". Do you want me to set it to that task?"
+     case find (\t -> toLower task `isInfixOf` toLower (tProject t ++ " - " ++ tName t)) tasks of
+       Just t -> do say $ "Found " ++ tProject t ++ " - " ++ tName t ++ ". Do you want me to set it to that task?"
                     doIt <- confirm
                     if doIt
                        then say "Okay, doing it now" >> setTask login pass from to t
@@ -118,7 +118,7 @@ handleIntent _ _ i = do $(logWarn) $ "Unexpected intent: " ++ tshow i
 askAndSetTask :: MonadConv m => Text -> Text -> Day -> Day -> [Task] -> ExceptT String m ()
 askAndSetTask login pass from to tasks =
   do say "Which task where your working on?"
-     forM_ (zip [1..] tasks) $ \(i, t) -> say $ "`" ++ tshow i ++ "` " ++ tName t
+     forM_ (zip [1..] tasks) $ \(i, t) -> say $ "`" ++ tshow i ++ "` " ++ tProject t ++ " - " ++ tName t
      answer <- listen
      case (readZ . unpack) answer >>= \i -> index tasks (i - 1) of
            Just t -> setTask login pass from to t
@@ -127,7 +127,7 @@ askAndSetTask login pass from to tasks =
 -- TODO, say what actually changed (be nicely idempotent)
 setTask :: MonadConv m => Text -> Text -> Day -> Day -> Task -> ExceptT String m ()
 setTask login pass from to task =
-  do say $ "Okay, setting task to " ++ tName task ++ " between " ++ tshow from ++ " and " ++ tshow to
+  do say $ "Okay, setting task to " ++ tProject task ++ " - " ++ tName task ++ " between " ++ tshow from ++ " and " ++ tshow to
      run login pass (setTasks (zip [from..to] (repeat (Just task))))
      say "Done"
 

@@ -32,10 +32,11 @@ import System.Environment (getEnv)
 main :: IO ()
 main = do
   getEnv "WIT_TOKEN" -- Fail fast when we don't have a token
+  slackToken <- getEnv "SLACK_TOKEN"
   bracket (openLocalState initialBotState)
           createCheckpointAndClose
           --(\acid -> conversation acid "hardcodedlocal")
-          runSlackBot
+          (runSlackBot slackToken)
 
 dumpState :: IO ()
 dumpState = bracket (openLocalState initialBotState) closeAcidState dumpIt
