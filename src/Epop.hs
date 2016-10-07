@@ -10,6 +10,8 @@ import           Test.WebDriver
 import           Test.WebDriver.Commands.Wait (expect, expectAlertOpen,
                                                unexpected, waitUntil)
 import           Test.WebDriver.Utils         (urlEncode)
+import System.Environment (lookupEnv)
+
 
 import           Types
 
@@ -24,9 +26,18 @@ openEpop p = do (user, pass) <- ask
         enc = unpack . urlEncode . pack
 
 runEpop :: String -> String -> Epop a -> ExceptT String IO a
-runEpop user pass = handleAny handler . mapExceptT (runSession conf . finallyClose . flip runReaderT creds)
-  where conf = defaultConfig { wdHost = "127.0.0.1" }
-        creds = (user, pass)
+runEpop user pass action = do
+  host <- liftIO (lookupEnv "SELENIUM_HOST")
+  let conf = defaultConfig { wdHost = host ?: "127.0.0.1" }
+  catchAllErrors (
+    mapExceptT
+      ( runSession conf
+      . flip runReaderT creds)
+      (finallyClose action)
+    )
+  where creds = (user, pass)
+        catchAllErrors :: ExceptT String IO a -> ExceptT String IO a  -- Ugly error catchall XXX
+        catchAllErrors action = handleAny handler action
         handler e = throwE (show e) -- TODO screenshot when it crashes
 
 listWeekLines :: Epop [Element]
